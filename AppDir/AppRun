@@ -1,5 +1,26 @@
-
 #!/bin/bash
+# Deteksi arsitektur sistem
+ARCH=$(uname -m)
+
+# Set environment variables
 HERE="$(dirname "$(readlink -f "${0}")")"
 EXEC="${HERE}/usr/bin/bersih"
-exec "${EXEC}" "$@"
+
+# Periksa kompatibilitas
+case "$ARCH" in
+    x86_64|amd64)
+        exec "${EXEC}" "$@"
+        ;;
+    aarch64|arm64)
+        if [ -f "${EXEC}.arm64" ]; then
+            exec "${EXEC}.arm64" "$@"
+        else
+            echo "Error: Arsitektur $ARCH tidak didukung oleh versi ini"
+            exit 1
+        fi
+        ;;
+    *)
+        echo "Error: Arsitektur $ARCH tidak didukung"
+        exit 1
+        ;;
+esac

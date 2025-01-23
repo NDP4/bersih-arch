@@ -24,6 +24,20 @@ Utilitas sederhana untuk membersihkan sistem Arch Linux Anda.
    ./Bersih-x86_64.AppImage [OPSI]
    ```
 
+### Instalasi Sistem
+
+1. Unduh AppImage terbaru
+2. Jalankan installer:
+   ```bash
+   chmod +x install.sh
+   ./install.sh
+   ```
+3. Logout dan login kembali, atau jalankan:
+   ```bash
+   export PATH=$PATH:$HOME/.local/bin
+   ```
+4. Sekarang bisa langsung menggunakan perintah `bersih` di terminal
+
 ### Pengembangan
 
 1. Klon repositori:

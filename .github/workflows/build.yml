@@ -34,7 +34,13 @@ jobs:
           cp AppDir/bersih.desktop AppDir/usr/share/applications/
           chmod +x AppDir/AppRun
           chmod +x AppDir/usr/bin/bersih
-          ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir Bersih-x86_64.AppImage
+          # Test AppRun script
+          bash -n AppDir/AppRun
+          # Build AppImage dengan flag debug
+          ARCH=x86_64 ./appimagetool-x86_64.AppImage -v AppDir Bersih-x86_64.AppImage
+          # Test AppImage
+          chmod +x Bersih-x86_64.AppImage
+          ./Bersih-x86_64.AppImage --version || true
           
       - name: Create Release
         id: create_release
