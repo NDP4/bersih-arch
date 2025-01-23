@@ -17,11 +17,11 @@ Utilitas sederhana untuk membersihkan sistem Arch Linux Anda.
 1. Unduh rilis terbaru dari halaman [Releases](https://github.com/NDP4/bersih-arch/releases)
 2. Jadikan file dapat dieksekusi:
    ```bash
-   chmod +x Bersih.AppImage
+   chmod +x Bersih-x86_64.AppImage
    ```
 3. Jalankan:
    ```bash
-   ./Bersih.AppImage [OPSI]
+   ./Bersih-x86_64.AppImage [OPSI]
    ```
 
 ### Pengembangan
