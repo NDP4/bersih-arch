@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Bersih
+Exec=bersih
+Icon=bersih
+Type=Application
+Categories=Utility;
+Comment=Utilitas Pembersih Sistem untuk Arch Linux
+Terminal=true

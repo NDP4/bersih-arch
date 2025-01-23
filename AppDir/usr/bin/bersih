@@ -1,0 +1,269 @@
+#!/bin/bash
+
+VERSION="1.0.0"
+AUTHOR="NDP"
+
+# Warna untuk tampilan
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+BOLD='\033[1m'
+
+# Fungsi untuk menampilkan header
+show_header() {
+    clear
+    echo -e "${BLUE}${BOLD}"
+    echo "════════════════════════════════════════════"
+    echo "       BERSIH - Arch Linux Cleaner"
+    echo "          Dibuat oleh: ${AUTHOR}"
+    echo "              v${VERSION}"
+    echo "════════════════════════════════════════════"
+    echo -e "${NC}"
+}
+
+# Fungsi untuk menampilkan spinner
+show_spinner() {
+    local pid=$1
+    local delay=0.1
+    local spinstr='|/-\'
+    while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
+        local temp=${spinstr#?}
+        printf " [%c]  " "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        echo -ne "\r"
+        sleep $delay
+    done
+    printf "    \r"
+}
+
+# Fungsi untuk menampilkan progress bar
+progress_bar() {
+    local duration=$1
+    local size=40
+    local progress=0
+    local cols=$(tput cols)
+    
+    while [ $progress -le 100 ]; do
+        let fill=$(((progress * size) / 100))
+        let empty=$((size - fill))
+        printf "\r["
+        printf "%-${fill}s" '' | tr ' ' '='
+        printf "%-${empty}s" '' | tr ' ' ' '
+        printf "] %3d%%" $progress
+        let progress+=2
+        sleep $duration
+    done
+    echo
+}
+
+# Fungsi untuk menghitung ukuran dalam format yang mudah dibaca
+format_size() {
+    local size=$1
+    if [ $size -ge 1073741824 ]; then
+        echo "$(awk "BEGIN {printf \"%.2f\", ${size}/1024/1024/1024}") GB"
+    elif [ $size -ge 1048576 ]; then
+        echo "$(awk "BEGIN {printf \"%.2f\", ${size}/1024/1024}") MB"
+    elif [ $size -ge 1024 ]; then
+        echo "$(awk "BEGIN {printf \"%.2f\", ${size}/1024}") KB"
+    else
+        echo "${size} B"
+    fi
+}
+
+show_help() {
+    show_header
+    echo -e "${BOLD}Penggunaan:${NC} bersih [OPSI]"
+    echo
+    echo -e "${BOLD}Opsi:${NC}"
+    echo -e "  ${GREEN}-h, --help${NC}     Menampilkan pesan bantuan ini"
+    echo -e "  ${GREEN}-v, --version${NC}  Menampilkan versi"
+    echo -e "  ${GREEN}-update${NC}        Membersihkan cache package manager"
+    echo -e "  ${GREEN}-temp${NC}          Membersihkan file sementara"
+    echo -e "  ${GREEN}-deep${NC}          Pembersihan mendalam"
+    echo -e "  ${GREEN}-all${NC}           Membersihkan semuanya"
+    echo
+}
+
+clean_package_cache() {
+    local initial_size=$(du -sb /var/cache/pacman/pkg/ 2>/dev/null | cut -f1)
+    local packages_removed=0
+    local errors=()
+    
+    echo -e "${BOLD}Membersihkan Package Manager Cache${NC}\n"
+
+    # Bersihkan pacman cache
+    echo "→ Membersihkan pacman cache..."
+    if sudo pacman -Sc --noconfirm >/dev/null 2>&1; then
+        progress_bar 0.1
+    else
+        errors+=("Gagal membersihkan pacman cache")
+    fi
+    
+    # Hapus paket tidak terpakai
+    echo "→ Mencari paket yang tidak terpakai..."
+    local unused=$(pacman -Qtdq 2>/dev/null)
+    if [ ! -z "$unused" ]; then
+        echo "Ditemukan $(echo "$unused" | wc -l) paket tidak terpakai"
+        if sudo pacman -Rns $unused --noconfirm >/dev/null 2>&1; then
+            packages_removed=$(echo "$unused" | wc -l)
+            progress_bar 0.1
+        else
+            errors+=("Gagal menghapus paket tidak terpakai")
+        fi
+    else
+        echo "Tidak ada paket yang perlu dihapus"
+    fi
+    
+    # Hitung hasil pembersihan
+    local final_size=$(du -sb /var/cache/pacman/pkg/ 2>/dev/null | cut -f1)
+    local saved_space=$((initial_size - final_size))
+    
+    echo
+    echo "Hasil Pembersihan Package Manager:"
+    echo "• Ruang yang dibebaskan: $(format_size $saved_space)"
+    echo "• Paket yang dihapus: $packages_removed"
+    
+    if [ ${#errors[@]} -ne 0 ]; then
+        echo
+        echo "Error yang ditemukan:"
+        for error in "${errors[@]}"; do
+            echo "! $error"
+        done
+    fi
+    
+    # Bersihkan yay cache
+    if command -v yay &> /dev/null; then
+        show_progress "yay -Sc --noconfirm" "Membersihkan yay cache"
+    fi
+    
+    # Bersihkan paru cache
+    if command -v paru &> /dev/null; then
+        show_progress "paru -Sc --noconfirm" "Membersihkan paru cache"
+    fi
+}
+
+clean_temp_files() {
+    local initial_size=$(du -sb /tmp/ 2>/dev/null | cut -f1)
+    local files_removed=0
+    local errors=()
+    
+    echo -e "${BOLD}Membersihkan File Sementara${NC}\n"
+    
+    # Bersihkan /tmp
+    echo "→ Membersihkan direktori /tmp..."
+    files_removed=$(find /tmp -type f | wc -l)
+    if sudo rm -rf /tmp/* 2>/dev/null; then
+        progress_bar 0.1
+    else
+        errors+=("Beberapa file di /tmp tidak dapat dihapus")
+    fi
+    
+    # Bersihkan journal
+    echo "→ Membersihkan journal logs..."
+    if sudo journalctl --vacuum-time=3d >/dev/null 2>&1; then
+        progress_bar 0.1
+    else
+        errors+=("Gagal membersihkan journal logs")
+    fi
+    
+    local final_size=$(du -sb /tmp/ 2>/dev/null | cut -f1)
+    local saved_space=$((initial_size - final_size))
+    
+    echo
+    echo "Hasil Pembersihan Temporary:"
+    echo "• Ruang yang dibebaskan: $(format_size $saved_space)"
+    echo "• File yang dihapus: $files_removed"
+    
+    if [ ${#errors[@]} -ne 0 ]; then
+        echo
+        echo "Error yang ditemukan:"
+        for error in "${errors[@]}"; do
+            echo "! $error"
+        done
+    fi
+    
+    show_progress "rm -rf ~/.cache/tmp/* 2>/dev/null" "Membersihkan cache pengguna"
+}
+
+deep_clean() {
+    echo "Melakukan Pembersihan Mendalam..."
+    echo "───────────────────────────────"
+    
+    # Bersihkan cache thumbnail
+    echo "→ Membersihkan cache thumbnail..."
+    rm -rf ~/.cache/thumbnails/* 2>/dev/null
+    progress_bar 0.1
+    
+    # Bersihkan cache browser
+    echo "→ Membersihkan cache browser..."
+    rm -rf ~/.cache/google-chrome/Default/Cache/* 2>/dev/null
+    rm -rf ~/.cache/mozilla/firefox/*.default*/cache2/* 2>/dev/null
+    progress_bar 0.1
+    
+    # Bersihkan cache aplikasi
+    echo "→ Membersihkan cache aplikasi..."
+    rm -rf ~/.cache/* 2>/dev/null
+    progress_bar 0.1
+    
+    # Bersihkan log sistem lama
+    echo "→ Membersihkan log sistem lama..."
+    sudo find /var/log -type f -name "*.old" -delete 2>/dev/null
+    sudo find /var/log -type f -name "*.gz" -delete 2>/dev/null
+    progress_bar 0.1
+}
+
+# Periksa dependensi
+check_dependencies() {
+    if ! command -v pv &> /dev/null; then
+        echo -e "${RED}Error: 'pv' tidak ditemukan${NC}"
+        echo "Mohon install 'pv' dengan menjalankan:"
+        echo "sudo pacman -S pv"
+        exit 1
+    fi
+}
+
+# Main program
+check_dependencies
+
+case "$1" in
+    "-h"|"--help")
+        show_help
+        ;;
+    "-v"|"--version")
+        echo "Bersih v${VERSION} oleh ${AUTHOR}"
+        ;;
+    "-update")
+        show_header
+        clean_package_cache
+        ;;
+    "-temp")
+        show_header
+        clean_temp_files
+        ;;
+    "-deep")
+        show_header
+        deep_clean
+        ;;
+    "-all")
+        show_header
+        clean_package_cache
+        echo
+        clean_temp_files
+        echo
+        deep_clean
+        ;;
+    *)
+        show_help
+        exit 1
+        ;;
+esac
+
+# Tampilkan ringkasan akhir
+if [ "$1" != "-h" ] && [ "$1" != "--help" ] && [ "$1" != "-v" ] && [ "$1" != "--version" ]; then
+    echo
+    echo "════════════════════════════════════════════"
+    echo "Pembersihan selesai! Ketik 'bersih -h' untuk bantuan"
+    echo "════════════════════════════════════════════"
+fi
