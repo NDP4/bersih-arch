@@ -28,7 +28,7 @@ Utilitas sederhana untuk membersihkan sistem Arch Linux Anda.
 
 1. Klon repositori:
    ```bash
-   git clone https://github.com/yourusername/bersih.git
+   git clone https://github.com/NDP4/bersih-arch.git
    cd bersih
    ```
 2. Jadikan script dapat dieksekusi:
