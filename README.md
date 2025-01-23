@@ -14,7 +14,7 @@ Utilitas sederhana untuk membersihkan sistem Arch Linux Anda.
 
 ### Menggunakan AppImage
 
-1. Unduh rilis terbaru dari halaman [Releases](https://github.com/GANTI_DENGAN_USERNAME_ANDA/bersih/releases)
+1. Unduh rilis terbaru dari halaman [Releases](https://github.com/NDP4/bersih-arch/releases)
 2. Jadikan file dapat dieksekusi:
    ```bash
    chmod +x Bersih.AppImage
